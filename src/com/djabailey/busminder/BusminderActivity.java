@@ -1,97 +1,650 @@
 package com.djabailey.busminder;
 
-import java.util.UUID;
+import java.util.ArrayList;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.database.DataSetObserver;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.BaseExpandableListAdapter;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.EditText;
+import android.widget.ExpandableListAdapter;
+import android.widget.ExpandableListView;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
-import com.getpebble.android.kit.PebbleKit;
-import com.getpebble.android.kit.util.PebbleDictionary;
 
-import com.djabailey.busminder.NetThread.gotDataCallback;
+import com.google.android.gms.maps.model.LatLng;
 
-public class BusminderActivity extends Activity implements gotDataCallback{
-	TextView tvText;
-	EditText etRoute;
-	EditText etStop1, etStop2;
+public class BusminderActivity extends Activity{
 	
-	NetThread myNT = null;
+	ExpandableListView elvStops;
+	ExpandableListAdapter elaStops;
+	
+	
+	StopData stops;
+	DataSetObserver dso ;
+	
+	public class myExpandableListAdapter extends BaseExpandableListAdapter{
+		
+		@Override
+		public boolean isEmpty() {
+			return (stops.busStopIDs.size() <=0);
+		}
+		
+		@Override
+		public boolean isChildSelectable(int groupPosition, int childPosition) {
+			return false;
+		}
+		
+		@Override
+		public boolean hasStableIds() {
+			return false;
+		}
+		
+		@Override
+		public View getGroupView(final int groupPosition, boolean isExpanded,
+				View convertView, ViewGroup parent) {
+			LinearLayout llRow = new LinearLayout(getApplicationContext());
+			
+			//get screen size
+			DisplayMetrics dm = new DisplayMetrics();
+	        getWindowManager().getDefaultDisplay().getMetrics(dm);
+	        int screenWidth = dm.widthPixels;
+	        
+			llRow.setMinimumWidth(screenWidth);
+			llRow.setMinimumHeight(50);
+			TextView spacer = new TextView(getApplicationContext());
+			spacer.setWidth(70);
+			llRow.addView(spacer);
+			
+			CheckBox cbEnable = new CheckBox(getApplicationContext());
+			cbEnable.setFocusable(false);
+			cbEnable.setChecked(stops.busStopEnabled.get(groupPosition).booleanValue());
+			cbEnable.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+				
+				@Override
+				public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+					stops.busStopEnabled.set(groupPosition, Boolean.valueOf(isChecked));
+					RestartService();
+				}
+			});
+			llRow.addView(cbEnable);
+			
+			TextView tvListItemText = new TextView(getApplicationContext());
+			tvListItemText.setTextSize(25);
+			tvListItemText.setText(stops.busStopNames.get(groupPosition) + " (" + stops.busStopIDs.get(groupPosition) + ")");
+			llRow.addView(tvListItemText);
+			
+			return llRow;
+		}
+		
+		@Override
+		public long getGroupId(int groupPosition) {
+			return groupPosition;
+		}
+		
+		@Override
+		public int getGroupCount() {
+			if ((stops != null) && (stops.busStopIDs != null)){
+				return stops.busStopIDs.size();
+			}
+			return 0;
+		}
+		
+		
+		@Override
+		public Object getGroup(int groupPosition) {
+			return null;
+		}
+		/*
+		@Override
+		public long getCombinedGroupId(long groupId) {
+			return 0;
+		}
+		
+		@Override
+		public long getCombinedChildId(long groupId, long childId) {
+			return 0;
+		}
+		*/
+		@Override
+		public int getChildrenCount(int groupPosition) {
+			if (stops.routeFilters != null){
+				if (stops.routeFilters.get(groupPosition)!=null){
+					return stops.routeFilters.get(groupPosition).size()+1;
+				}
+			}
+			return 1;
+		}
+		
+		@Override
+		public View getChildView(final int groupPosition, int childPosition,
+				boolean isLastChild, View convertView, ViewGroup parent) {
+			if (childPosition == 0){	
+				LinearLayout llRow1 = new LinearLayout(getApplicationContext());
+				LinearLayout llRow2 = new LinearLayout(getApplicationContext());
+				LinearLayout llCol = new LinearLayout(getApplicationContext());
+				
+				TextView tvStopsLabel = new TextView(getApplicationContext());
+				tvStopsLabel.setText("This Stop: ");
+				//tvStopsLabel.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
+				tvStopsLabel.setHeight(96);
+				tvStopsLabel.setGravity(Gravity.CENTER);
+				
+				TextView tvNoRouteLabel = new TextView(getApplicationContext());
+				tvNoRouteLabel.setText("Filters: ");
+				//tvNoRouteLabel.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
+				tvNoRouteLabel.setHeight(96);
+				tvNoRouteLabel.setGravity(Gravity.CENTER);
+					
+				ImageButton btnEdit = new ImageButton(getApplicationContext());
+				btnEdit.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_edit)));
+				btnEdit.setFocusable(false);
+				btnEdit.setMinimumHeight(96);
+				
+				ImageButton btnDelete = new ImageButton(getApplicationContext());
+				btnDelete.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_delete)));
+				btnDelete.setFocusable(false);
+				btnDelete.setMinimumHeight(96);
+				btnDelete.setOnClickListener(new OnClickListener() {
+					
+					@Override
+					public void onClick(View v) {
+						runOnUiThread(new Runnable() {
+							
+							@Override
+							public void run() {
+								stops.busStopIDs.remove(groupPosition);
+								stops.busStopNames.remove(groupPosition);
+								stops.busStopLocations.remove(groupPosition);
+								stops.busStopEnabled.remove(groupPosition);
+								stops.routeFilters.remove(groupPosition);
+								elvStops.invalidate();
+								elvStops.invalidateViews();
+								elvStops.requestLayout();
+								((BaseExpandableListAdapter) elaStops).notifyDataSetChanged();
+								RestartService();
+							}
+						});
+						
+					}
+				});
+					
+					
+				ImageButton btnAdd = new ImageButton(getApplicationContext());
+				btnAdd.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_add)));
+				btnAdd.setFocusable(false);
+				btnAdd.setMinimumHeight(40);
+				btnAdd.setOnClickListener(new OnClickListener() {
+					
+					@Override
+					public void onClick(View v) {
+						addNewFilter(groupPosition); 
+					}
+				});
+				llCol.setOrientation(LinearLayout.VERTICAL);
+					
+				llRow1.addView(tvStopsLabel);
+				llRow1.addView(btnEdit);
+				llRow1.addView(btnDelete);
+				llRow1.addView(tvNoRouteLabel);
+				llRow1.addView(btnAdd);
+				
+				llCol.addView(llRow1);
+				llCol.addView(llRow2);
+				
+				TextView tvLblItems = new TextView(getApplicationContext());
+				if (getChildrenCount(groupPosition) == 1){
+					//no items
+					tvLblItems.setText("No route filters for this stop.");
+				}
+				else{
+					//some items
+					tvLblItems.setText("Active route filters:");
+				}
+				llCol.addView(tvLblItems);
+				return llCol;
+			}
+			else{
+				final int id = childPosition - 1;
+				
+				
+				ImageButton btnDelete = new ImageButton(getApplicationContext());
+				btnDelete.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_delete)));
+				btnDelete.setFocusable(false);
+				btnDelete.setMinimumHeight(96);
+				btnDelete.setOnClickListener(new OnClickListener() {
+					
+					@Override
+					public void onClick(View v) {
+						runOnUiThread(new Runnable() {
+							
+							@Override
+							public void run() {
+								stops.routeFilters.get(groupPosition).remove(id);
+								elvStops.invalidate();
+								elvStops.invalidateViews();
+								elvStops.requestLayout();
+								((BaseExpandableListAdapter) elaStops).notifyDataSetChanged();
+								RestartService();
+							}
+						});
+						
+					}
+				});
+				
+				TextView tvRoute = new TextView(getApplicationContext());
+				tvRoute.setText("Route: " + stops.routeFilters.get(groupPosition).get(id));
+				
+				LinearLayout llRow = new LinearLayout(getApplicationContext());
+				llRow.addView(tvRoute);
+				llRow.addView(btnDelete);
+				return llRow;
+			}
+			//return null;
+		}
+		
+		@Override
+		public long getChildId(int groupPosition, int childPosition) {
+			return childPosition;
+		}
+		
+		@Override
+		public Object getChild(int groupPosition, int childPosition) {
+			return null;
+		}
+		/*
+		@Override
+		public boolean areAllItemsEnabled() {
+			return false;
+		}
+		*/
+		
+	}
 	
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        myNT = new NetThread();
-        myNT.setGDCB(this);
-        myNT.start();
-        tvText = (TextView)findViewById(R.id.tvText);
-        tvText.setText("Status...");
         
-        etRoute = (EditText)findViewById(R.id.etRoute);
-        etStop1 = (EditText)findViewById(R.id.etStop1);
-        etStop1.addTextChangedListener(new TextWatcher() {
+        Button btnAddStop = (Button)findViewById(R.id.btnAdd);
+        btnAddStop.setOnClickListener(new OnClickListener() {
 			
-			public void onTextChanged(CharSequence s, int start, int before, int count) {
-				myNT.stop = etStop1.getText().toString();
-			}
-			
-			public void beforeTextChanged(CharSequence s, int start, int count,
-					int after) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-			public void afterTextChanged(Editable s) {
-				// TODO Auto-generated method stub
-				
+			@Override
+			public void onClick(View v) {
+				addNewStop();
 			}
 		});
-        etStop2 = (EditText)findViewById(R.id.etStop2);
+        
+        elvStops = (ExpandableListView)findViewById(R.id.elvStops);
+        elaStops = new myExpandableListAdapter();
+        /*elaStops = new ExpandableListAdapter() {
+			
+			@Override
+			public void unregisterDataSetObserver(DataSetObserver observer) {
+			}
+			
+			@Override
+			public void registerDataSetObserver(DataSetObserver observer) {
+			}
+			
+			@Override
+			public void onGroupExpanded(int groupPosition) {
+			}
+			
+			@Override
+			public void onGroupCollapsed(int groupPosition) {	
+			}
+			
+			@Override
+			public boolean isEmpty() {
+				return (stops.busStopIDs.size() <=0);
+			}
+			
+			@Override
+			public boolean isChildSelectable(int groupPosition, int childPosition) {
+				return false;
+			}
+			
+			@Override
+			public boolean hasStableIds() {
+				return false;
+			}
+			
+			@Override
+			public View getGroupView(final int groupPosition, boolean isExpanded,
+					View convertView, ViewGroup parent) {
+				LinearLayout llRow = new LinearLayout(getApplicationContext());
+				
+				//get screen size
+				DisplayMetrics dm = new DisplayMetrics();
+		        getWindowManager().getDefaultDisplay().getMetrics(dm);
+		        int screenWidth = dm.widthPixels;
+		        
+				llRow.setMinimumWidth(screenWidth);
+				llRow.setMinimumHeight(50);
+				TextView spacer = new TextView(getApplicationContext());
+				spacer.setWidth(70);
+				llRow.addView(spacer);
+				
+				CheckBox cbEnable = new CheckBox(getApplicationContext());
+				cbEnable.setFocusable(false);
+				cbEnable.setChecked(stops.busStopEnabled.get(groupPosition).booleanValue());
+				cbEnable.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+					
+					@Override
+					public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+						stops.busStopEnabled.set(groupPosition, Boolean.valueOf(isChecked));
+						
+					}
+				});
+				llRow.addView(cbEnable);
+				
+				TextView tvListItemText = new TextView(getApplicationContext());
+				tvListItemText.setTextSize(25);
+				tvListItemText.setText(stops.busStopNames.get(groupPosition) + " (" + stops.busStopIDs.get(groupPosition) + ")");
+				llRow.addView(tvListItemText);
+				
+				return llRow;
+			}
+			
+			@Override
+			public long getGroupId(int groupPosition) {
+				return groupPosition;
+			}
+			
+			@Override
+			public int getGroupCount() {
+				if ((stops != null) && (stops.busStopIDs != null)){
+					return stops.busStopIDs.size();
+				}
+				return 0;
+			}
+			
+			@Override
+			public Object getGroup(int groupPosition) {
+				return null;
+			}
+			
+			@Override
+			public long getCombinedGroupId(long groupId) {
+				return 0;
+			}
+			
+			@Override
+			public long getCombinedChildId(long groupId, long childId) {
+				return 0;
+			}
+			
+			@Override
+			public int getChildrenCount(int groupPosition) {
+				if (stops.routeFilters != null){
+					if (stops.routeFilters.get(groupPosition)!=null){
+						return stops.routeFilters.get(groupPosition).size()+1;
+					}
+				}
+				return 1;
+			}
+			
+			@Override
+			public View getChildView(final int groupPosition, int childPosition,
+					boolean isLastChild, View convertView, ViewGroup parent) {
+				if (childPosition == 0){	
+					LinearLayout llRow1 = new LinearLayout(getApplicationContext());
+					LinearLayout llRow2 = new LinearLayout(getApplicationContext());
+					LinearLayout llCol = new LinearLayout(getApplicationContext());
+					
+					TextView tvStopsLabel = new TextView(getApplicationContext());
+					tvStopsLabel.setText("This Stop: ");
+					//tvStopsLabel.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
+					tvStopsLabel.setHeight(96);
+					tvStopsLabel.setGravity(Gravity.CENTER);
+					
+					TextView tvNoRouteLabel = new TextView(getApplicationContext());
+					tvNoRouteLabel.setText("Filters: ");
+					//tvNoRouteLabel.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
+					tvNoRouteLabel.setHeight(96);
+					tvNoRouteLabel.setGravity(Gravity.CENTER);
+						
+					ImageButton btnEdit = new ImageButton(getApplicationContext());
+					btnEdit.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_edit)));
+					btnEdit.setFocusable(false);
+					btnEdit.setMinimumHeight(96);
+					
+					ImageButton btnDelete = new ImageButton(getApplicationContext());
+					btnDelete.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_delete)));
+					btnDelete.setFocusable(false);
+					btnDelete.setMinimumHeight(96);
+					btnDelete.setOnClickListener(new OnClickListener() {
+						
+						@Override
+						public void onClick(View v) {
+							runOnUiThread(new Runnable() {
+								
+								@Override
+								public void run() {
+									stops.busStopIDs.remove(groupPosition);
+									stops.busStopNames.remove(groupPosition);
+									stops.busStopLocations.remove(groupPosition);
+									stops.busStopEnabled.remove(groupPosition);
+									stops.routeFilters.remove(groupPosition);
+									elvStops.requestLayout();
+								}
+							});
+							
+						}
+					});
+						
+						
+					ImageButton btnAdd = new ImageButton(getApplicationContext());
+					btnAdd.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_add)));
+					btnAdd.setFocusable(false);
+					btnAdd.setMinimumHeight(40);
+					btnAdd.setOnClickListener(new OnClickListener() {
+						
+						@Override
+						public void onClick(View v) {
+							addNewFilter(groupPosition); 
+						}
+					});
+					llCol.setOrientation(LinearLayout.VERTICAL);
+						
+					llRow1.addView(tvStopsLabel);
+					llRow1.addView(btnEdit);
+					llRow1.addView(btnDelete);
+					llRow1.addView(tvNoRouteLabel);
+					llRow1.addView(btnAdd);
+					
+					llCol.addView(llRow1);
+					llCol.addView(llRow2);
+					
+					TextView tvLblItems = new TextView(getApplicationContext());
+					if (getChildrenCount(groupPosition) == 1){
+						//no items
+						tvLblItems.setText("No route filters for this stop.");
+					}
+					else{
+						//some items
+						tvLblItems.setText("Active route filters:");
+					}
+					llCol.addView(tvLblItems);
+					return llCol;
+				}
+				else{
+					int id = childPosition - 1;
+					TextView tvRoute = new TextView(getApplicationContext());
+					tvRoute.setText("Route: " + stops.routeFilters.get(groupPosition).get(id));
+					return tvRoute;
+				}
+				//return null;
+			}
+			
+			@Override
+			public long getChildId(int groupPosition, int childPosition) {
+				return 0;
+			}
+			
+			@Override
+			public Object getChild(int groupPosition, int childPosition) {
+				return null;
+			}
+			
+			@Override
+			public boolean areAllItemsEnabled() {
+				return false;
+			}
+		};*/
+		stops = new StopData();
+		stops.load(getSharedPreferences("busdata", MODE_MULTI_PROCESS));
+        elvStops.setAdapter(elaStops);
+        RestartService();
     }
 
-	public void gotData() {
-		 // writing response to log
-	    Log.d("Http Response:", myNT.response.toString());
-	    Log.d("Http Response:", myNT.JSON);
-	    runOnUiThread(new Runnable() {
-			
-			public void run() {
-				//show data.
-				tvText.setText(myNT.JSON);
-			}
-		});
-	    boolean dataSent = false;
-	    if (myNT.bussesAtStop != null){
-	    	for (int i = 0; i<= myNT.bussesAtStop.length-1; i++){
-	    		if (myNT.bussesAtStop[i] != null){
-	    			if( myNT.bussesAtStop[i].route.contentEquals(etRoute.getText().toString())){
-	    				updateWatch(myNT.bussesAtStop[i].route + " - " + myNT.bussesAtStop[i].time + "\n" + myNT.bussesAtStop[i].name);
-	    				dataSent = true;
-	    				break;
-	    			}
-	    		}
-	    	}
-	    }
-	    if (!dataSent){
-	    	updateWatch("No data found.");
-	    }
+    @Override
+    protected void onStop(){
+       super.onStop();
+       saveStops();
+    }
+
+	private void saveStops() {
+		stops.save(getSharedPreferences("busdata", MODE_MULTI_PROCESS));
+	}
+    
+	private void RestartService() {
+		Log.i("service", "restarting service");
+		saveStops();
+		Intent serviceStart = new Intent(getApplicationContext(), BusDataPushService.class);
+        stopService(new Intent(getApplicationContext(),BusDataPushService.class));
+        serviceStart = new Intent(getApplicationContext(), BusDataPushService.class);
+        startService(serviceStart);
 	}
 	
-	// Push {range, hole, par} data to be displayed on Pebble's Golf app.
-    // To simplify formatting, values are transmitted to Pebble as null-terminated strings.
-    public void updateWatch(String textdata) {
-        
-        PebbleDictionary data = new PebbleDictionary();
-        data.addString(0, textdata);
-        
-        // Once the dictionary has been populated, it is scheduled to be sent to the watch. The sender/recipient of
-        // all PebbleKit messages is determined by the UUID. In this case, since we're sending the data to the golf app,
-        // we specify the Golf UUID.
-        PebbleKit.sendDataToPebble(getApplicationContext(), UUID.fromString("0f08a738-2ee1-4506-a130-1122d0f632d5"), data);
-    }
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
+		Log.i("Location selected", "Lat: " + data.getDoubleExtra("Lat", 0));
+		Log.i("Location selected", "Lng: " + data.getDoubleExtra("Lng", 0));
+
+		AlertDialog.Builder alert = new AlertDialog.Builder(this);
+
+		alert.setTitle("Add a stop");
+		alert.setMessage("Enter new stop details...");
+
+		// Set an EditText view to get user input
+		final LinearLayout items = new LinearLayout(getApplicationContext());
+		items.setOrientation(LinearLayout.VERTICAL);
+			final LinearLayout rowName = new LinearLayout(getApplicationContext());
+			rowName.setOrientation(LinearLayout.HORIZONTAL);
+				final TextView rowNameLabel = new TextView(getApplicationContext());
+				rowNameLabel.setText("Name: ");
+				rowNameLabel.setWidth(120);
+				rowName.addView(rowNameLabel);
+				
+				final EditText rowNameEdit = new EditText(getApplicationContext());
+				rowNameEdit.setWidth(500);
+				rowName.addView(rowNameEdit);
+				
+			final LinearLayout rowID = new LinearLayout(getApplicationContext());
+			rowID.setOrientation(LinearLayout.HORIZONTAL);
+				final TextView rowIDLabel = new TextView(getApplicationContext());
+				rowIDLabel.setText("Number: ");
+				rowIDLabel.setWidth(120);
+				rowID.addView(rowIDLabel);
+				
+				final EditText rowIDEdit = new EditText(getApplicationContext());
+				rowIDEdit.setWidth(500);
+				rowID.addView(rowIDEdit);
+			
+		items.addView(rowName);
+		items.addView(rowID);
+		
+		alert.setView(items);
+
+		alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+		public void onClick(DialogInterface dialog, int whichButton) {
+			if (stops.busStopIDs == null){stops.busStopIDs = new ArrayList<String>(1);}
+			if (stops.busStopNames == null){stops.busStopNames = new ArrayList<String>(1);}
+			if (stops.busStopLocations == null){stops.busStopLocations = new ArrayList<LatLng>(1);}
+			if (stops.routeFilters == null){stops.routeFilters = new ArrayList<ArrayList<String> >(1);}
+			if (stops.busStopEnabled == null){stops.busStopEnabled = new ArrayList<Boolean>(1);}
+			stops.busStopNames.add(rowNameEdit.getText().toString());
+			stops.busStopIDs.add(rowIDEdit.getText().toString());
+			stops.routeFilters.add(new ArrayList<String>());
+			stops.busStopLocations.add(new LatLng(data.getDoubleExtra("Lat", 0), data.getDoubleExtra("Lng", 0)));
+			stops.busStopEnabled.add(Boolean.valueOf(true));
+		  }
+		});
+		
+		alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			  public void onClick(DialogInterface dialog, int whichButton) {
+			    // Canceled.
+			  }
+			});
+		
+		alert.show();
+		elvStops.invalidate();
+		elvStops.invalidateViews();
+		elvStops.requestLayout();
+		((BaseExpandableListAdapter) elaStops).notifyDataSetChanged();
+		RestartService();
+	}
+	
+	public void addNewStop(){
+		
+		Intent intent = new Intent(this, MapActivity.class);
+		startActivityForResult(intent, 0);
+		
+	}
+
+		public void addNewFilter(final int stop){
+			AlertDialog.Builder alert = new AlertDialog.Builder(this);
+
+			alert.setTitle("Add a route filter");
+			alert.setMessage("Enter the bus route number you want for this stop.");
+			
+			final EditText rowLocationEdit = new EditText(getApplicationContext());
+			rowLocationEdit.setMinimumWidth(600);
+			
+			alert.setView(rowLocationEdit);
+
+			alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int whichButton) {
+				if (stops.routeFilters==null){
+					stops.routeFilters = new ArrayList<ArrayList<String> >(1);
+				}
+				if (stops.routeFilters.get(stop)==null){
+					stops.routeFilters.add(stop, new ArrayList<String>()); 
+				}
+				stops.routeFilters.get(stop).add(rowLocationEdit.getText().toString());
+				
+			  }
+			});
+		
+		alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+		  public void onClick(DialogInterface dialog, int whichButton) {
+		    // Canceled.
+		  }
+		});
+		
+		alert.show();
+		((BaseExpandableListAdapter) elaStops).notifyDataSetInvalidated();
+		((BaseExpandableListAdapter) elaStops).notifyDataSetChanged();
+		elvStops.invalidate();
+		elvStops.invalidateViews();
+		elvStops.requestLayout();
+		RestartService();
+	}
 }

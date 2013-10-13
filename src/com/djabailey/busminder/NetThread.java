@@ -89,6 +89,10 @@ public class NetThread extends Thread{
 	
 	private boolean running = true;
 	
+	public void kill(){
+		running = false;
+	}
+	
 	@Override
 	public void run(){
 		super.run();
@@ -99,7 +103,7 @@ public class NetThread extends Thread{
 				gdcb.gotData();
 			}
 			try {
-				Thread.sleep(30000);//30 seconds
+				Thread.sleep(15000);//15 seconds
 			} catch (InterruptedException e) {
 			}
 		}
