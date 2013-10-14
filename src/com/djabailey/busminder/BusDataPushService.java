@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.djabailey.busminder.NetThread;
 import com.djabailey.busminder.NetThread.gotDataCallback;
 import com.getpebble.android.kit.PebbleKit;
 import com.getpebble.android.kit.util.PebbleDictionary;
@@ -170,16 +171,8 @@ public class BusDataPushService extends Service implements gotDataCallback{
 	}
 	
 	public void updateWatch(String textdata) {
-        
         PebbleDictionary data = new PebbleDictionary();
-        data.addString(0, textdata);
-        Log.i("push event", "Route filter: "+ routeFilter);
-        Log.i("push event", "Stop number: "+ myNT.stop);
-        Log.i("push event", "Full text: "+ myNT.JSON);
-        Log.i("push event", textdata);
-        // Once the dictionary has been populated, it is scheduled to be sent to the watch. The sender/recipient of
-        // all PebbleKit messages is determined by the UUID. In this case, since we're sending the data to the golf app,
-        // we specify the Golf UUID.
+        data.addString(1234, textdata);
         PebbleKit.sendDataToPebble(getApplicationContext(), UUID.fromString("0f08a738-2ee1-4506-a130-1122d0f632d5"), data);
     }	
 
