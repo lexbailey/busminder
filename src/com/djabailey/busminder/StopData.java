@@ -14,11 +14,14 @@ public class StopData {
 	ArrayList<Boolean> busStopEnabled;
 	ArrayList<LatLng> busStopLocations;
 	
+	boolean serviceEnabled = true;
+	
 	public void save(SharedPreferences prefs){
 		Log.i("Load", "About to save " + busStopIDs.size()+ " stops");
 		if (busStopIDs.size()>=1){
 			
 			SharedPreferences.Editor editor = prefs.edit();
+			editor.putBoolean("service-enable", serviceEnabled);
 			editor.putInt("Numstops", busStopIDs.size());
 			for (int i = 0; i<= busStopIDs.size()-1; i++){
 				editor.putString("Stop" + i + "-ID", busStopIDs.get(i));
@@ -61,5 +64,6 @@ public class StopData {
 				routeFilters.get(i).add(j, prefs.getString("Stop" + i + "-Filter" + j, ""));
 			}
 		}
+		serviceEnabled = prefs.getBoolean("service-enable", true);
 	}
 }

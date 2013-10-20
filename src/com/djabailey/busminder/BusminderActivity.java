@@ -6,7 +6,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.database.DataSetObserver;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -35,7 +34,6 @@ public class BusminderActivity extends Activity{
 	
 	
 	StopData stops;
-	DataSetObserver dso ;
 	
 	public class myExpandableListAdapter extends BaseExpandableListAdapter{
 		
@@ -109,17 +107,7 @@ public class BusminderActivity extends Activity{
 		public Object getGroup(int groupPosition) {
 			return null;
 		}
-		/*
-		@Override
-		public long getCombinedGroupId(long groupId) {
-			return 0;
-		}
-		
-		@Override
-		public long getCombinedChildId(long groupId, long childId) {
-			return 0;
-		}
-		*/
+	
 		@Override
 		public int getChildrenCount(int groupPosition) {
 			if (stops.routeFilters != null){
@@ -266,13 +254,6 @@ public class BusminderActivity extends Activity{
 		public Object getChild(int groupPosition, int childPosition) {
 			return null;
 		}
-		/*
-		@Override
-		public boolean areAllItemsEnabled() {
-			return false;
-		}
-		*/
-		
 	}
 	
     /** Called when the activity is first created. */
@@ -292,226 +273,28 @@ public class BusminderActivity extends Activity{
         
         elvStops = (ExpandableListView)findViewById(R.id.elvStops);
         elaStops = new myExpandableListAdapter();
-        /*elaStops = new ExpandableListAdapter() {
-			
-			@Override
-			public void unregisterDataSetObserver(DataSetObserver observer) {
-			}
-			
-			@Override
-			public void registerDataSetObserver(DataSetObserver observer) {
-			}
-			
-			@Override
-			public void onGroupExpanded(int groupPosition) {
-			}
-			
-			@Override
-			public void onGroupCollapsed(int groupPosition) {	
-			}
-			
-			@Override
-			public boolean isEmpty() {
-				return (stops.busStopIDs.size() <=0);
-			}
-			
-			@Override
-			public boolean isChildSelectable(int groupPosition, int childPosition) {
-				return false;
-			}
-			
-			@Override
-			public boolean hasStableIds() {
-				return false;
-			}
-			
-			@Override
-			public View getGroupView(final int groupPosition, boolean isExpanded,
-					View convertView, ViewGroup parent) {
-				LinearLayout llRow = new LinearLayout(getApplicationContext());
-				
-				//get screen size
-				DisplayMetrics dm = new DisplayMetrics();
-		        getWindowManager().getDefaultDisplay().getMetrics(dm);
-		        int screenWidth = dm.widthPixels;
-		        
-				llRow.setMinimumWidth(screenWidth);
-				llRow.setMinimumHeight(50);
-				TextView spacer = new TextView(getApplicationContext());
-				spacer.setWidth(70);
-				llRow.addView(spacer);
-				
-				CheckBox cbEnable = new CheckBox(getApplicationContext());
-				cbEnable.setFocusable(false);
-				cbEnable.setChecked(stops.busStopEnabled.get(groupPosition).booleanValue());
-				cbEnable.setOnCheckedChangeListener(new OnCheckedChangeListener() {
-					
-					@Override
-					public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-						stops.busStopEnabled.set(groupPosition, Boolean.valueOf(isChecked));
-						
-					}
-				});
-				llRow.addView(cbEnable);
-				
-				TextView tvListItemText = new TextView(getApplicationContext());
-				tvListItemText.setTextSize(25);
-				tvListItemText.setText(stops.busStopNames.get(groupPosition) + " (" + stops.busStopIDs.get(groupPosition) + ")");
-				llRow.addView(tvListItemText);
-				
-				return llRow;
-			}
-			
-			@Override
-			public long getGroupId(int groupPosition) {
-				return groupPosition;
-			}
-			
-			@Override
-			public int getGroupCount() {
-				if ((stops != null) && (stops.busStopIDs != null)){
-					return stops.busStopIDs.size();
-				}
-				return 0;
-			}
-			
-			@Override
-			public Object getGroup(int groupPosition) {
-				return null;
-			}
-			
-			@Override
-			public long getCombinedGroupId(long groupId) {
-				return 0;
-			}
-			
-			@Override
-			public long getCombinedChildId(long groupId, long childId) {
-				return 0;
-			}
-			
-			@Override
-			public int getChildrenCount(int groupPosition) {
-				if (stops.routeFilters != null){
-					if (stops.routeFilters.get(groupPosition)!=null){
-						return stops.routeFilters.get(groupPosition).size()+1;
-					}
-				}
-				return 1;
-			}
-			
-			@Override
-			public View getChildView(final int groupPosition, int childPosition,
-					boolean isLastChild, View convertView, ViewGroup parent) {
-				if (childPosition == 0){	
-					LinearLayout llRow1 = new LinearLayout(getApplicationContext());
-					LinearLayout llRow2 = new LinearLayout(getApplicationContext());
-					LinearLayout llCol = new LinearLayout(getApplicationContext());
-					
-					TextView tvStopsLabel = new TextView(getApplicationContext());
-					tvStopsLabel.setText("This Stop: ");
-					//tvStopsLabel.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
-					tvStopsLabel.setHeight(96);
-					tvStopsLabel.setGravity(Gravity.CENTER);
-					
-					TextView tvNoRouteLabel = new TextView(getApplicationContext());
-					tvNoRouteLabel.setText("Filters: ");
-					//tvNoRouteLabel.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
-					tvNoRouteLabel.setHeight(96);
-					tvNoRouteLabel.setGravity(Gravity.CENTER);
-						
-					ImageButton btnEdit = new ImageButton(getApplicationContext());
-					btnEdit.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_edit)));
-					btnEdit.setFocusable(false);
-					btnEdit.setMinimumHeight(96);
-					
-					ImageButton btnDelete = new ImageButton(getApplicationContext());
-					btnDelete.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_delete)));
-					btnDelete.setFocusable(false);
-					btnDelete.setMinimumHeight(96);
-					btnDelete.setOnClickListener(new OnClickListener() {
-						
-						@Override
-						public void onClick(View v) {
-							runOnUiThread(new Runnable() {
-								
-								@Override
-								public void run() {
-									stops.busStopIDs.remove(groupPosition);
-									stops.busStopNames.remove(groupPosition);
-									stops.busStopLocations.remove(groupPosition);
-									stops.busStopEnabled.remove(groupPosition);
-									stops.routeFilters.remove(groupPosition);
-									elvStops.requestLayout();
-								}
-							});
-							
-						}
-					});
-						
-						
-					ImageButton btnAdd = new ImageButton(getApplicationContext());
-					btnAdd.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_add)));
-					btnAdd.setFocusable(false);
-					btnAdd.setMinimumHeight(40);
-					btnAdd.setOnClickListener(new OnClickListener() {
-						
-						@Override
-						public void onClick(View v) {
-							addNewFilter(groupPosition); 
-						}
-					});
-					llCol.setOrientation(LinearLayout.VERTICAL);
-						
-					llRow1.addView(tvStopsLabel);
-					llRow1.addView(btnEdit);
-					llRow1.addView(btnDelete);
-					llRow1.addView(tvNoRouteLabel);
-					llRow1.addView(btnAdd);
-					
-					llCol.addView(llRow1);
-					llCol.addView(llRow2);
-					
-					TextView tvLblItems = new TextView(getApplicationContext());
-					if (getChildrenCount(groupPosition) == 1){
-						//no items
-						tvLblItems.setText("No route filters for this stop.");
-					}
-					else{
-						//some items
-						tvLblItems.setText("Active route filters:");
-					}
-					llCol.addView(tvLblItems);
-					return llCol;
-				}
-				else{
-					int id = childPosition - 1;
-					TextView tvRoute = new TextView(getApplicationContext());
-					tvRoute.setText("Route: " + stops.routeFilters.get(groupPosition).get(id));
-					return tvRoute;
-				}
-				//return null;
-			}
-			
-			@Override
-			public long getChildId(int groupPosition, int childPosition) {
-				return 0;
-			}
-			
-			@Override
-			public Object getChild(int groupPosition, int childPosition) {
-				return null;
-			}
-			
-			@Override
-			public boolean areAllItemsEnabled() {
-				return false;
-			}
-		};*/
 		stops = new StopData();
 		stops.load(getSharedPreferences("busdata", MODE_MULTI_PROCESS));
         elvStops.setAdapter(elaStops);
         RestartService();
+        
+        Button start = (Button)findViewById(R.id.btnStart);
+        Button stop = (Button)findViewById(R.id.btnStop);
+        start.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				stops.serviceEnabled = true;
+				RestartService();
+			}
+		});
+        stop.setOnClickListener(new OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				stops.serviceEnabled = false;
+				RestartService();
+			}
+		});
     }
 
     @Override

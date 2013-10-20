@@ -90,7 +90,11 @@ public class BusDataPushService extends Service implements gotDataCallback{
         
         stops = new StopData();
 		stops.load(getSharedPreferences("busdata", MODE_MULTI_PROCESS));
-        
+        if (!stops.serviceEnabled){ //if the service is not wanted, GO AWAY!
+        	myNT.kill();
+        	this.stopSelf();
+        }
+		
 		int num = stops.busStopLocations.size();
 		busStopLocations = new Location[num];
 		for (int i = 0; i<= num-1; i++){
