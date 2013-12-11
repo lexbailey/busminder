@@ -15,23 +15,17 @@
             android:text="Add a bus stop..." />
 
         <Button
-            android:id="@+id/btnStop"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Stop" />
-
-        <Button
             android:id="@+id/btnStart"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Start" />
+            android:text="Start Service" />
 
     </LinearLayout>
 
-    <ExpandableListView
+    <ListView
         android:id="@+id/elvStops"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" >
-    </ExpandableListView>
+    </ListView>
 
 </LinearLayout>

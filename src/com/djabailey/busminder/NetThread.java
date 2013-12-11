@@ -24,6 +24,7 @@ public class NetThread extends Thread{
 	public HttpResponse response;
 	public String JSON;
 	public JSONObject data;
+	public String error;
 	
 	public class busData{
 		public String route;
@@ -56,6 +57,7 @@ public class NetThread extends Thread{
 		    
 		    try {
 				data = new JSONObject(JSON);
+				error =  data.getString("error");
 				JSONArray jaBus = data.getJSONArray("data");
 				bussesAtStop = new busData[jaBus.length()];
 				for (int i = 0; i<= jaBus.length()-1; i++){
@@ -65,6 +67,7 @@ public class NetThread extends Thread{
 					bussesAtStop[i].route = thisBus.getString("route");
 					bussesAtStop[i].time = thisBus.getString("est");
 				}
+				
 			} catch (IllegalStateException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

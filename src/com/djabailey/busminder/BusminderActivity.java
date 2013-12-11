@@ -84,7 +84,15 @@ public class BusminderActivity extends Activity{
 			TextView tvListItemText = new TextView(getApplicationContext());
 			tvListItemText.setTextSize(25);
 			tvListItemText.setText(stops.busStopNames.get(groupPosition) + " (" + stops.busStopIDs.get(groupPosition) + ")");
+			tvListItemText.setWidth(300);
 			llRow.addView(tvListItemText);
+			
+			ImageButton btnMenu = new ImageButton(getApplicationContext());
+			btnMenu.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_more)));
+			btnMenu.setFocusable(false);
+			btnMenu.setMinimumHeight(96);
+			
+			llRow.addView(btnMenu);
 			
 			return llRow;
 		}
@@ -142,6 +150,66 @@ public class BusminderActivity extends Activity{
 				btnEdit.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_edit)));
 				btnEdit.setFocusable(false);
 				btnEdit.setMinimumHeight(96);
+				btnEdit.setOnClickListener(new OnClickListener() {
+					
+					@Override
+					public void onClick(View v) {
+						// TODO Auto-generated method stub
+						AlertDialog.Builder alert = new AlertDialog.Builder(BusminderActivity.this);
+
+						alert.setTitle("Edit stop");
+						alert.setMessage("Edit the details below...");
+
+						// Set an EditText view to get user input
+						final LinearLayout items = new LinearLayout(getApplicationContext());
+						items.setOrientation(LinearLayout.VERTICAL);
+							final LinearLayout rowName = new LinearLayout(getApplicationContext());
+							rowName.setOrientation(LinearLayout.HORIZONTAL);
+								final TextView rowNameLabel = new TextView(getApplicationContext());
+								rowNameLabel.setText("Name: ");
+								rowNameLabel.setWidth(120);
+								rowName.addView(rowNameLabel);
+								
+								final EditText rowNameEdit = new EditText(getApplicationContext());
+								rowNameEdit.setWidth(500);
+								rowNameEdit.setText(stops.busStopNames.get(groupPosition));
+								rowName.addView(rowNameEdit);
+								
+							final LinearLayout rowID = new LinearLayout(getApplicationContext());
+							rowID.setOrientation(LinearLayout.HORIZONTAL);
+								final TextView rowIDLabel = new TextView(getApplicationContext());
+								rowIDLabel.setText("Number: ");
+								rowIDLabel.setWidth(120);
+								rowID.addView(rowIDLabel);
+								
+								final EditText rowIDEdit = new EditText(getApplicationContext());
+								rowIDEdit.setWidth(500);
+								rowIDEdit.setText(stops.busStopIDs.get(groupPosition));
+								rowID.addView(rowIDEdit);
+							
+						items.addView(rowName);
+						items.addView(rowID);
+						
+						alert.setView(items);
+
+						alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int whichButton) {
+							if (stops.busStopIDs == null){stops.busStopIDs = new ArrayList<String>(1);}//shouldn't happen here
+							if (stops.busStopNames == null){stops.busStopNames = new ArrayList<String>(1);}
+							stops.busStopNames.set(groupPosition ,rowNameEdit.getText().toString());
+							stops.busStopIDs.set(groupPosition ,rowIDEdit.getText().toString());
+						  }
+						});
+						
+						alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+							  public void onClick(DialogInterface dialog, int whichButton) {
+							    // Canceled.
+							  }
+							});
+						
+						alert.show();
+					}
+				});
 				
 				ImageButton btnDelete = new ImageButton(getApplicationContext());
 				btnDelete.setImageDrawable((getResources().getDrawable(android.R.drawable.ic_menu_delete)));
@@ -278,23 +346,27 @@ public class BusminderActivity extends Activity{
         elvStops.setAdapter(elaStops);
         RestartService();
         
-        Button start = (Button)findViewById(R.id.btnStart);
-        Button stop = (Button)findViewById(R.id.btnStop);
+        final Button start = (Button)findViewById(R.id.btnStart);
         start.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				stops.serviceEnabled = true;
+				stops.serviceEnabled = !stops.serviceEnabled;
 				RestartService();
+				if (stops.serviceEnabled){
+					start.setText("Stop Service");
+				}
+				else{
+					start.setText("Start Service");
+				}
 			}
 		});
-        stop.setOnClickListener(new OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				stops.serviceEnabled = false;
-				RestartService();
-			}
-		});
+        
+        if (stops.serviceEnabled){
+			start.setText("Stop Service");
+		}
+		else{
+			start.setText("Start Service");
+		}
     }
 
     @Override
@@ -318,6 +390,7 @@ public class BusminderActivity extends Activity{
 	
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
+		if (resultCode == Activity.RESULT_OK){
 		Log.i("Location selected", "Lat: " + data.getDoubleExtra("Lat", 0));
 		Log.i("Location selected", "Lng: " + data.getDoubleExtra("Lng", 0));
 
@@ -383,6 +456,7 @@ public class BusminderActivity extends Activity{
 		elvStops.requestLayout();
 		((BaseExpandableListAdapter) elaStops).notifyDataSetChanged();
 		RestartService();
+		}
 	}
 	
 	public void addNewStop(){

@@ -58,8 +58,9 @@ public class BusDataPushService extends Service implements gotDataCallback{
 		    				}
 		    			}
 		    		}
-		    		Log.i("busstop", "Nearest stop is " + shortestDistance + "m away");
-		    		setStopNumber(stops.busStopIDs.get(nearestStop));
+		    		if ((nearestStop>=0) && (stops.busStopIDs.size()>nearestStop)){
+		    			setStopNumber(stops.busStopIDs.get(nearestStop));
+		    		}
 		    		if (isFirstRun){
 		    			myNT.interrupt();
 		    			isFirstRun = false;
@@ -123,19 +124,18 @@ public class BusDataPushService extends Service implements gotDataCallback{
 	public void gotData() {
 		boolean dataSent = false;
 	    if (myNT.bussesAtStop != null){
-	    	String tag = "gotData function.";
-	    	Log.i(tag, "Bus stop has busses!");
+	    	
 	    	for (int i = 0; i<= myNT.bussesAtStop.length-1; i++){
-	    		Log.i(tag, "Investigating bus "+i);
+	    	
 	    		if (myNT.bussesAtStop[i] != null){
-	    			Log.i(tag, "Bus at " + i + "is valid.");
+	    		
 	    			if (((stops.routeFilters != null)&&(stops.routeFilters.size() >= nearestStop+1))
 	    			&&(stops.routeFilters.get(nearestStop).size()>=1)){
-	    				Log.i(tag, "Bus stop has filters!");
+	    			
 	    				for (int j = 0; j<=stops.routeFilters.get(nearestStop).size()-1; j++){
-	    					Log.i(tag, "Checking filter " + j);
+	    				
 	    					if( myNT.bussesAtStop[i].route.contentEquals(stops.routeFilters.get(nearestStop).get(j))){
-	    						Log.i(tag, "This bus matches the filter!");
+	    					
 	    						routeFilter = stops.routeFilters.get(nearestStop).get(j);
 	    						updateWatch(
 	    							stops.busStopNames.get(nearestStop) + "\n"
@@ -149,7 +149,7 @@ public class BusDataPushService extends Service implements gotDataCallback{
 	    				
 	    			}
 	    			else{
-	    				Log.i(tag, "No filters, showing the first bus if available");
+	    				
 	    				if (myNT.bussesAtStop.length >= 1){
 	    					dataSent = true;
 	    				updateWatch(
@@ -161,14 +161,37 @@ public class BusDataPushService extends Service implements gotDataCallback{
 	    		}
 	    	}
 	    	if (!dataSent){
-				Log.i(tag, "No busses matching filters");
 				updateWatch("No busses match the filters.");
+				dataSent = true;
 			}
 	    }
+	    
+	    if (myNT.error != null){
+		    if (!dataSent){
+		    	if (myNT.error.equals("scrape_error")){
+		    		updateWatch("Bus stop not found.");
+			    	dataSent = true;	
+				}
+		    }
+		    if (!dataSent){
+		    	if (myNT.error.equals("empty_get")){
+		    		updateWatch("Data server or request error.");
+			    	dataSent = true;	
+				}
+		    }
+		    if (!dataSent){
+		    	if (myNT.error.equals("no_stop_specified")){
+		    		updateWatch("Stop ID missing");
+			    	dataSent = true;	
+				}
+		    }
+	    }
 	    if (!dataSent){
-	    	updateWatch("No data found.");
+	    		updateWatch("Updating, please wait...");
+		    	dataSent = true;
 	    }
 	}
+	
 	
 	public void setStopNumber(String number){
 		myNT.stop = number;
