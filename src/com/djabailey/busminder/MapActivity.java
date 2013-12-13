@@ -66,7 +66,7 @@ public class MapActivity extends FragmentActivity {
     
     private void setUpMap() {
         BusStop = mMap.addMarker(new MarkerOptions().position(new LatLng(0, 0)).title("Bus Stop"));
-        SelectedLocation = new LatLng(0,0);
+        SelectedLocation = new LatLng(54,-3);
         mMap.setOnMapClickListener(new OnMapClickListener() {
 			
 			@Override

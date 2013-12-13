@@ -2,17 +2,24 @@ package com.djabailey.busminder;
 
 import java.util.UUID;
 
+import android.annotation.SuppressLint;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.app.TaskStackBuilder;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
-import com.djabailey.busminder.NetThread;
 import com.djabailey.busminder.NetThread.gotDataCallback;
 import com.getpebble.android.kit.PebbleKit;
 import com.getpebble.android.kit.util.PebbleDictionary;
@@ -37,7 +44,6 @@ public class BusDataPushService extends Service implements gotDataCallback{
 	
 	@Override
 	public void onCreate(){
-		Log.i("BusDataPushService", "creating push service.");
 		
 		// Acquire a reference to the system Location Manager
 		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
@@ -85,9 +91,10 @@ public class BusDataPushService extends Service implements gotDataCallback{
 	    super.onCreate();
 	}
 	
+	NotificationManager mNotificationManager;
+	int mId;
 	@Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i("BusDataPushService", "starting push service.");
         
         stops = new StopData();
 		stops.load(getSharedPreferences("busdata", MODE_MULTI_PROCESS));
@@ -103,6 +110,43 @@ public class BusDataPushService extends Service implements gotDataCallback{
 			busStopLocations[i].setLatitude(stops.busStopLocations.get(i).latitude);
 			busStopLocations[i].setLongitude(stops.busStopLocations.get(i).longitude);
 		}
+		
+		Bitmap icon = BitmapFactory.decodeResource(getApplicationContext().getResources(),
+                R.drawable.ic_launcher);
+		
+		NotificationCompat.Builder mBuilder =
+		        new NotificationCompat.Builder(this)
+				.setSmallIcon(R.drawable.ic_launcher)
+				.setLargeIcon(icon)
+		        .setContentTitle("Busminder service is running")
+		        .setContentText("Tap to configure")
+		        .setOngoing(true);
+		
+		// Creates an explicit intent for an Activity in your app
+		Intent resultIntent = new Intent(this, BusminderActivity.class);
+
+		// The stack builder object will contain an artificial back stack for the
+		// started Activity.
+		// This ensures that navigating backward from the Activity leads out of
+		// your application to the Home screen.
+		TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+		// Adds the back stack for the Intent (but not the Intent itself)
+		stackBuilder.addParentStack(BusminderActivity.class);
+		// Adds the Intent that starts the Activity to the top of the stack
+		stackBuilder.addNextIntent(resultIntent);
+		PendingIntent resultPendingIntent =
+		        stackBuilder.getPendingIntent(
+		            0,
+		            PendingIntent.FLAG_UPDATE_CURRENT
+		        );
+		mBuilder.setContentIntent(resultPendingIntent);
+		mNotificationManager =
+		    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		// mId allows you to update the notification later on.
+		mId = 1;
+		mNotificationManager.notify(mId, mBuilder.build());
+		Log.i("Notif", "ication");
+		
         // We want this service to continue running until it is explicitly
         // stopped, so return sticky.
         return START_STICKY;
@@ -111,6 +155,7 @@ public class BusDataPushService extends Service implements gotDataCallback{
     @Override
     public void onDestroy() {
     	myNT.kill();
+    	mNotificationManager.cancel(mId);
     	super.onDestroy();
     	//blah
     }
@@ -167,6 +212,13 @@ public class BusDataPushService extends Service implements gotDataCallback{
 	    }
 	    
 	    if (myNT.error != null){
+	    	if (!dataSent){
+		    	if (myNT.error.equals("no_busses_within_hour")){
+		    		updateWatch("No busses departing from here within the next hour.");
+			    	dataSent = true;	
+				}
+		    }
+		    
 		    if (!dataSent){
 		    	if (myNT.error.equals("scrape_error")){
 		    		updateWatch("Bus stop not found.");

@@ -3,7 +3,6 @@ package com.djabailey.busminder;
 import java.util.ArrayList;
 
 import android.content.SharedPreferences;
-import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 
@@ -15,13 +14,14 @@ public class StopData {
 	ArrayList<LatLng> busStopLocations;
 	
 	boolean serviceEnabled = true;
+	boolean firstRun = true;
 	
 	public void save(SharedPreferences prefs){
-		Log.i("Load", "About to save " + busStopIDs.size()+ " stops");
 		if (busStopIDs.size()>=1){
 			
 			SharedPreferences.Editor editor = prefs.edit();
 			editor.putBoolean("service-enable", serviceEnabled);
+			editor.putBoolean("firstrun", false);
 			editor.putInt("Numstops", busStopIDs.size());
 			for (int i = 0; i<= busStopIDs.size()-1; i++){
 				editor.putString("Stop" + i + "-ID", busStopIDs.get(i));
@@ -41,7 +41,6 @@ public class StopData {
 	}
 	public void load(SharedPreferences prefs){
 		int numItems = prefs.getInt("Numstops", 0);
-		Log.i("Load", "About to load " + numItems + " stops");
 		routeFilters = new ArrayList<ArrayList<String> >(numItems);
 		routeFilters = new ArrayList<ArrayList<String> >(numItems);
 		busStopIDs = new ArrayList<String>(numItems);
@@ -50,7 +49,6 @@ public class StopData {
 		busStopEnabled = new ArrayList<Boolean>(numItems);
 		
 		for (int i = 0; i<= numItems-1; i++){
-			Log.i("Load", "Loading stop " + i);
 			busStopIDs.add(i, prefs.getString("Stop" + i + "-ID", ""));
 			busStopNames.add(i, prefs.getString("Stop" + i + "-Name", ""));
 			double lat = Double.longBitsToDouble(prefs.getLong("Stop" + i + "-Lat", 0));
@@ -65,5 +63,6 @@ public class StopData {
 			}
 		}
 		serviceEnabled = prefs.getBoolean("service-enable", true);
+		firstRun = prefs.getBoolean("firstrun", true);
 	}
 }

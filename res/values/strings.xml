@@ -3,5 +3,15 @@
 
     <string name="hello">Hello World, BusminderActivity!</string>
     <string name="app_name">Busminder for Pebble</string>
+    <string name="action_add">Add bus stop</string>
+    <string name="action_start_start">Start Service</string>
+    <string name="action_start_stop">Stop Service</string>
+    <string name="action_help">Help</string>
+    <string name="action_add_filter">Add route filter</string>
+    <string name="action_delete_stop">Delete this stop</string>
+    <string name="action_edit_stop">Edit stop info</string>
+    <string name="route_delete">Delete Route Filter</string>
+    <string name="route_edit">Edit Route Filter</string>
+    <string name="action_upload">Upload Pebble watch app</string>
 
 </resources>
